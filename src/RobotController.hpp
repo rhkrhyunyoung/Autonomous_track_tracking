@@ -1,29 +1,26 @@
 #ifndef ROBOT_CONTROLLER_HPP
 #define ROBOT_CONTROLLER_HPP
-
 #include "config.hpp"
 
 class RobotController {
 public:
     double calculateOmega(double error) {
+        // P 제어만 사용 (가장 안정적임)
         double p_term = Config::PID_P * error;
-        error_sum_ += error;
-        double i_term = Config::PID_I * error_sum_;
+        
+        // D 제어 (급격한 변화 방지)
         double d_term = Config::PID_D * (error - prev_error_);
         prev_error_ = error;
 
-        return p_term + i_term + d_term;
+        return p_term + d_term;
     }
 
-    std::pair<double, double> getWheelSpeeds(double omega) {
-        double left_v = Config::BASE_SPEED - (omega * Config::TRACK_WIDTH / 2.0);
-        double right_v = Config::BASE_SPEED + (omega * Config::TRACK_WIDTH / 2.0);
-        return {left_v, right_v};
+    // 트랙 놓쳤을 때 에러 기록 삭제용
+    void reset() {
+        prev_error_ = 0;
     }
 
 private:
-    double error_sum_ = 0;
     double prev_error_ = 0;
 };
-
 #endif

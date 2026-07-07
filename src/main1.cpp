@@ -5,6 +5,8 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <algorithm>
+#include <vector>
+#include <string>
 #include "VisionProcessor.hpp"
 #include "RobotController.hpp"
 #include "config.hpp"
@@ -20,7 +22,7 @@ public:
 
         vp_ = std::make_unique<VisionProcessor>();
         rc_ = std::make_unique<RobotController>();
-        RCLCPP_INFO(this->get_logger(), "🚀 안정화 모드 가동! (부호 반전 및 뱅크 대응)");
+        RCLCPP_INFO(this->get_logger(), "🚀 덩어리 추적 & 시각화 모드 시작");
     }
 
 private:
@@ -29,59 +31,85 @@ private:
     }
 
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
-        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
-       cv::Mat frame = cv_ptr->image;
-      cv::Mat binary = vp_->getBinaryTrack(frame); // 민트색 이진화 영상
-      cv::Mat display_bev = vp_->getBEV(frame);
+        try {
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
+            cv::Mat frame = cv_ptr->image;
+            cv::Mat binary = vp_->getBinaryTrack(frame); 
+            cv::Mat display_bev = vp_->getBEV(frame);
 
-    // [핵심] 선 찾기 포기! 가장 큰 민트색 덩어리(Contour) 찾기
-      std::vector<std::vector<cv::Point>> contours;
-      cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+            // 1. 덩어리(Contour) 찾기
+            std::vector<std::vector<cv::Point>> contours;
+            cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-      double target_x = 320.0; // 기본값은 정중앙
-      bool track_found = false;
+            double target_x = 320.0; 
+            bool track_found = false;
+            int largest_idx = -1; // 가장 큰 덩어리의 번호 저장용
 
-      if (!contours.empty()) {
-        // 1. 가장 면적이 큰 덩어리 찾기
-         auto largest_contour = *std::max_element(contours.begin(), contours.end(),
-             [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
-                  return cv::contourArea(a) < cv::contourArea(b);
-            });
+            // 2. 가장 큰 덩어리의 번호(인덱스) 찾기
+            if (!contours.empty()) {
+                double max_area = 0;
+                for (size_t i = 0; i < contours.size(); i++) {
+                    double area = cv::contourArea(contours[i]);
+                    if (area > max_area) {
+                        max_area = area;
+                        largest_idx = i;
+                    }
+                }
 
-        // 2. 덩어리가 너무 작지 않으면 그 중심점을 타겟으로 잡음
-        if (cv::contourArea(largest_contour) > 500) {
-            cv::Moments m = cv::moments(largest_contour);
-            target_x = m.m10 / m.m00;
-            track_found = true;
+                // 면적이 300 이상일 때만 트랙으로 인정
+                if (largest_idx != -1 && max_area > 300) {
+                    cv::Moments m = cv::moments(contours[largest_idx]);
+                    if (m.m00 > 0) {
+                        target_x = m.m10 / m.m00;
+                        track_found = true;
+                    }
+                }
+            }
+
+            // 3. 트랙 놓쳤을 때 리셋 (Z값 고정 방지)
+            if (!track_found) {
+                rc_->reset(); 
+                target_x = 320.0;
+            }
+
+            // 4. 필터 (80% 이전값 유지)
+            target_x = (prev_target_x * 0.8) + (target_x * 0.2);
+            prev_target_x = target_x;
+
+            // 5. 제어값 계산
+            double error = 320.0 - target_x; 
+            double omega = rc_->calculateOmega(error / 100.0);
+
+            geometry_msgs::msg::Twist twist;
+            twist.linear.x = track_found ? Config::BASE_SPEED : 0.0;
+            
+            double final_omega = omega + (omega - current_yaw_rate_) * 0.05;
+            twist.angular.z = std::clamp(final_omega, -0.8, 0.8);
+            cmd_pub_->publish(twist);
+
+            // 6. 시각화 (인덱스를 사용하여 안전하게 그리기)
+            if (track_found && largest_idx != -1) {
+                // 파란색으로 덩어리 외곽선 그리기
+                cv::drawContours(display_bev, contours, largest_idx, cv::Scalar(255, 0, 0), 2);
+                
+                // 초록색으로 목표점과 방향선 그리기
+                cv::circle(display_bev, cv::Point((int)target_x, 400), 10, cv::Scalar(0, 255, 0), -1);
+                cv::line(display_bev, cv::Point(320, 480), cv::Point((int)target_x, 400), cv::Scalar(0, 255, 0), 3);
+                
+                // 조향값 텍스트 표시
+                std::string txt = "Steer Z: " + std::to_string(twist.angular.z).substr(0, 5);
+                cv::putText(display_bev, txt, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 255, 255), 2);
+            } else {
+                cv::putText(display_bev, "TRACK LOST", cv::Point(200, 240), cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 0, 255), 3);
+            }
+
+            cv::imshow("BEV Result", display_bev);
+            cv::waitKey(1);
+
+        } catch (std::exception& e) {
+            RCLCPP_ERROR(this->get_logger(), "Error: %s", e.what());
         }
     }
-
-    // 3. 필터 (움직임을 부드럽게)
-    if (!track_found) target_x = prev_target_x; // 못 찾으면 가던 대로
-    target_x = (prev_target_x * 0.8) + (target_x * 0.2);
-    prev_target_x = target_x;
-
-    // 4. 제어값 계산 (오른쪽이면 음수, 왼쪽이면 양수 - 방향 다시 확인됨)
-    // target_x > 320 (오른쪽) -> error < 0 -> omega < 0 (우회전)
-    double error = 320.0 - target_x; 
-    double omega = rc_->calculateOmega(error / 100.0);
-
-    geometry_msgs::msg::Twist twist;
-    twist.linear.x = Config::BASE_SPEED;
-    twist.angular.z = std::clamp(omega + (omega - current_yaw_rate_) * 0.1, -1.0, 1.0);
-
-    cmd_pub_->publish(twist);
-
-    // [시각화] 이제 덩어리 외곽선과 중심점을 보여줍니다.
-    if (track_found) {
-        cv::drawContours(display_bev, contours, -1, cv::Scalar(255, 0, 0), 2); // 파란색 외곽선
-        cv::circle(display_bev, cv::Point((int)target_x, 400), 10, cv::Scalar(0, 255, 0), -1); // 초록색 점
-        cv::line(display_bev, cv::Point(320, 480), cv::Point((int)target_x, 400), cv::Scalar(0, 255, 0), 3);
-    }
-
-    cv::imshow("BEV Result", display_bev);
-    cv::waitKey(1);
-}
 
     std::unique_ptr<VisionProcessor> vp_;
     std::unique_ptr<RobotController> rc_;
