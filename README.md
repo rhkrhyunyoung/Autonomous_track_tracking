@@ -39,3 +39,8 @@ ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true depth_module
 #run code
 ros2 run linetracing_cpp main_node
 ```
+
+## Topic
+```ros2 topic echo /cmd_vel_nav ```
+
+https://github.com/user-attachments/assets/797dab2f-dc77-4356-a737-60236f32bb0d
