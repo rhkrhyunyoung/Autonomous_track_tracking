@@ -1,4 +1,4 @@
-# autonomous_track_tracking (C++)
+# Autonomous_track_tracking (C++)
 
 ![ROS2](https://img.shields.io/badge/ros2-humble-blue?logo=ros) ![C++](https://img.shields.io/badge/cpp-17-orange?logo=c%2B%2B) ![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green?logo=opencv) ![RealSense](https://img.shields.io/badge/RealSense-D455-lightgrey)
 
