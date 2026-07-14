@@ -9,7 +9,7 @@ namespace Config {
     const int IMAGE_HEIGHT = 480;
     const std::vector<cv::Point2f> BEV_SRC = {
         cv::Point2f(0, 480),    cv::Point2f(640, 480),
-        cv::Point2f(220, 320),  cv::Point2f(420, 320)
+        cv::Point2f(120, 220),  cv::Point2f(520, 220)
     };
 
     const std::vector<cv::Point2f> BEV_DST = {
