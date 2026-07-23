@@ -35,7 +35,10 @@ Designed with a **modular Topic-Subscriber architecture** to enable multi-node c
 
 realsence code
 ```
-ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true depth_module.profile:=640x480x15 rgb_camera.profile:=640x480x15
+ros2 launch realsense2_camera rs_launch.py \
+rgb_camera.profile:=1280x720x15 \
+depth_module.profile:=1280x720x15 \
+align_depth.enable:=true
 ```
 run code
 ```
