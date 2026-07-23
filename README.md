@@ -52,6 +52,8 @@ ros2 launch linetracing_cpp track.launch.py
 
 <img width="1886" height="396" alt="rosgraph" src="https://github.com/user-attachments/assets/3b253956-f52b-419f-9670-cea4dd2a7511" />
 
-```ros2 topic echo /cmd_vel_nav ```
+```
+ros2 topic echo /cmd_vel_nav
+```
 
-https://github.com/user-attachments/assets/797dab2f-dc77-4356-a737-60236f32bb0d
+[스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
