@@ -69,8 +69,12 @@ private:
 
         geometry_msgs::msg::Twist twist;
         if (track_found) {
-            twist.linear.x = Config::BASE_SPEED;
-            twist.angular.z = std::clamp(omega, -1.2, 1.2);
+            double speed_factor = std::max(0.6, 1.0 - std::abs(omega) * 0.5);
+            twist.linear.x = Config::BASE_SPEED * speed_factor;
+            twist.angular.z = std::clamp(omega, -Config::MAX_ANGULAR_SPEED, Config::MAX_ANGULAR_SPEED);
+            
+            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
+                                "Error: %.2f, Omega: %.2f", error, twist.angular.z);
         } else {
             twist.linear.x = 0.0;
             twist.angular.z = 0.0;
