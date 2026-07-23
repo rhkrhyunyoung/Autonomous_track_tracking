@@ -33,10 +33,12 @@ Designed with a **modular Topic-Subscriber architecture** to enable multi-node c
 *   cv_bridge
 *   Eigen3 (`sudo apt install libeigen3-dev`)
 
+realsence code
 ```
-# realsence
-ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true depth_module.depth_fps:=15.0 rgb_module.rgb_fps:=15.0
-#run code
+ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true depth_module.profile:=640x480x15 rgb_camera.profile:=640x480x15
+```
+run code
+```
 ros2 run linetracing_cpp main_node
 ```
 
