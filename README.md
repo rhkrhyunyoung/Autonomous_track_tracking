@@ -44,7 +44,10 @@ run code
 ```
 ros2 run linetracing_cpp main_node
 ```
-
+run by launch 
+```
+ros2 launch linetracing_cpp track.launch.py
+```
 ## Topic
 
 <img width="1886" height="396" alt="rosgraph" src="https://github.com/user-attachments/assets/3b253956-f52b-419f-9670-cea4dd2a7511" />
