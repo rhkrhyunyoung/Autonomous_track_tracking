@@ -13,7 +13,7 @@ class LaneFollowerNode : public rclcpp::Node {
 public:
     LaneFollowerNode() : Node("lane_follower_node") {
         image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/camera/camera/color/image_raw", 10, std::bind(&LaneFollowerNode::image_callback, this, std::placeholders::_1));
+            "/camera_front/color/image_raw", 10, std::bind(&LaneFollowerNode::image_callback, this, std::placeholders::_1));
         cmd_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel_nav", 10);
 
         vp_ = std::make_unique<VisionProcessor>();
