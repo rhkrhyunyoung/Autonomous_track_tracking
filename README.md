@@ -57,3 +57,4 @@ ros2 topic echo /cmd_vel_nav
 ```
 
 [스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
+https://github.com/user-attachments/assets/1ae48b25-744f-43de-8b89-e6ec5a973423
