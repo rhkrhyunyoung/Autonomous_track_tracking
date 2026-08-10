@@ -18,7 +18,7 @@ public:
 
         vp_ = std::make_unique<VisionProcessor>();
         rc_ = std::make_unique<RobotController>();
-        RCLCPP_INFO(this->get_logger(), "🚀 NUC 1280x720 모드 가동! (덩어리 추종)");
+        RCLCPP_INFO(this->get_logger(), "🚀 라인 트레이서 (하단 60% ROI 모드)");
     }
 
 private:
@@ -26,16 +26,24 @@ private:
         cv::Mat frame = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
         cv::Mat binary = vp_->getBinaryTrack(frame);
 
-        // 1. ROI 설정 (1280x720 해상도 기준 하단부)
-        cv::Rect roi_rect(0, Config::ROI_START_Y, Config::IMAGE_WIDTH, Config::IMAGE_HEIGHT - Config::ROI_START_Y);
+        int img_w = frame.cols;
+        int img_h = frame.rows;
+        double center_x = img_w / 2.0;
+
+        // [핵심 수정] 하단 60%를 잡으려면 상단 40%를 버려야 함 (0.4 곱함)
+        // 만약 Config 값을 강제로 쓰고 싶다면 start_y = Config::ROI_START_Y; 로 바꾸세요.
+        int start_y = (int)(img_h * 0.4); 
+        
+        cv::Rect roi_rect(0, start_y, img_w, img_h - start_y);
         cv::Mat roi_mask = binary(roi_rect);
 
         // 2. 덩어리 찾기
         std::vector<std::vector<cv::Point>> contours;
         cv::findContours(roi_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-        double target_x = 640.0; // 1280의 정중앙
+        double target_x = center_x; 
         bool track_found = false;
+        bool is_tracking = false;
 
         if (!contours.empty()) {
             auto largest = *std::max_element(contours.begin(), contours.end(),
@@ -43,48 +51,71 @@ private:
                     return cv::contourArea(a) < cv::contourArea(b);
                 });
 
-            // 1280 해상도에서는 덩어리 면적 기준을 1000 정도로 높였습니다.
-            if (cv::contourArea(largest) > 1000) {
-                cv::Moments m = cv::moments(largest);
-                target_x = m.m10 / m.m00;
-                track_found = true;
+            double area = cv::contourArea(largest);
 
-                // 시각화: 파란색 테두리
+            if (area > 1000) {
+                track_found = true;
+                cv::Moments m = cv::moments(largest);
+                double cx = m.m10 / m.m00;
+                double cy = m.m01 / m.m00;
+
+                // 500,000 기준 조향 결정
+                if (area >= 50000) {
+                    target_x = cx;
+                    is_tracking = true;
+                } else {
+                    target_x = center_x;
+                }
+
+                // --- 시각화 무조건 수행 ---
+                // 1. 파란색 테두리 (offset을 start_y로 정확히 줌)
                 std::vector<std::vector<cv::Point>> disp_cnts;
                 std::vector<cv::Point> offset_cnt;
-                for(auto& p : largest) offset_cnt.push_back(p + cv::Point(0, Config::ROI_START_Y));
+                for(auto& p : largest) offset_cnt.push_back(p + cv::Point(0, start_y));
                 disp_cnts.push_back(offset_cnt);
                 cv::drawContours(frame, disp_cnts, -1, cv::Scalar(255, 0, 0), 4);
 
-                // 시각화: 초록색 중심점 및 가이드 라인
-                cv::Point center_pt((int)target_x, Config::ROI_START_Y + (int)(m.m01/m.m00));
+                // 2. 초록색 중심점 및 라인 (화면 맨 아래부터 연결)
+                cv::Point center_pt((int)cx, start_y + (int)cy);
                 cv::circle(frame, center_pt, 15, cv::Scalar(0, 255, 0), -1);
-                cv::line(frame, cv::Point(640, 720), center_pt, cv::Scalar(0, 255, 0), 5);
+                cv::line(frame, cv::Point((int)center_x, img_h), center_pt, cv::Scalar(0, 255, 0), 5);
+                
+                // 3. 면적 텍스트 표시
+                cv::putText(frame, "Area: " + std::to_string((int)area), cv::Point(30, 110), 
+                            cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 255), 2);
             }
         }
 
-        // 3. 제어 계산 (중앙 640 기준)
-        double error = 640.0 - target_x; 
+        // 3. 제어 신호
+        double error = center_x - target_x; 
         double omega = rc_->calculateOmega(error);
 
         geometry_msgs::msg::Twist twist;
         if (track_found) {
-            double speed_factor = std::max(0.6, 1.0 - std::abs(omega) * 0.5);
-            twist.linear.x = Config::BASE_SPEED * speed_factor;
-            twist.angular.z = std::clamp(omega, -Config::MAX_ANGULAR_SPEED, Config::MAX_ANGULAR_SPEED);
-            
-            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
-                                "Error: %.2f, Omega: %.2f", error, twist.angular.z);
+            if (is_tracking) {
+                double speed_factor = std::max(0.6, 1.0 - std::abs(omega) * 0.5);
+                twist.linear.x = Config::BASE_SPEED * speed_factor;
+                twist.angular.z = std::clamp(omega, -Config::MAX_ANGULAR_SPEED, Config::MAX_ANGULAR_SPEED);
+            } else {
+                twist.linear.x = Config::BASE_SPEED; // 20만 미만일 땐 직진
+                twist.angular.z = 0.0;
+            }
         } else {
             twist.linear.x = 0.0;
             twist.angular.z = 0.0;
         }
         cmd_pub_->publish(twist);
 
-        // 너무 크면 보기 힘드니 절반으로 줄여서 출력
+        // 상태 표시 및 ROI 노란 박스
+        std::string mode_str = is_tracking ? "MODE: TRACKING" : "MODE: FORCE STRAIGHT";
+        cv::putText(frame, mode_str, cv::Point(30, 60), cv::FONT_HERSHEY_SIMPLEX, 1.2, 
+                    is_tracking ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 255, 255), 3);
+        
+        cv::rectangle(frame, roi_rect, cv::Scalar(0, 255, 255), 2); // ROI 박스
+
         cv::Mat display_frame;
         cv::resize(frame, display_frame, cv::Size(640, 360));
-        cv::imshow("1280x720 Tracking View", display_frame);
+        cv::imshow("Lane Tracking View", display_frame);
         cv::waitKey(1);
     }
 
