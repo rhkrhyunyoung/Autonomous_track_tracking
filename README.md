@@ -40,13 +40,18 @@ Designed with a **modular Topic-Subscriber architecture** to enable multi-node c
 realsence code
 ```
 ros2 launch realsense2_camera rs_launch.py \
-rgb_camera.profile:=1280x720x15 \
-depth_module.profile:=1280x720x15 \
-align_depth.enable:=true
+  enable_color:=true \
+  enable_depth:=false \
+  rgb_camera.color_profile:=848x480x15 \
+  align_depth.enable:=false \
+  enable_sync:=true \
+  enable_gyro:=true \
+  enable_accel:=true \
+  unite_imu_method:=2
 ```
 run code
 ```
-ros2 run linetracing_cpp main_node
+ros2 run linetracing_cpp main1_node (or main2_node)
 ```
 run by launch 
 ```
