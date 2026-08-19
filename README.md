@@ -16,6 +16,10 @@
 *   **Advanced Signal Filtering**: 
     *   **Exponential Moving Average (EMA)**: Dampens sensor noise and prevents jitter.
     *   **Jump Guard**: Reject outlier target coordinates (>150px shift) caused by environmental artifacts.
+*   **Gravity-Vector Banking Compensation**: Utilizes RealSense IMU X-axis linear acceleration to detect lateral tilt on banked turns. When the gravity vector exceeds a threshold ($\pm3.0 m/s^2$), the system injects a proactive steering offset (approx. 10°) to counteract gravitational pull, ensuring the robot maintains an "in-course" trajectory rather than sliding down the slope.
+*   *   **Advanced Signal Filtering**:
+    *   **Exponential Moving Average (EMA)**: Dampens sensor noise and prevents jitter.
+    *   **Jump Guard**: Reject outlier target coordinates (>150px shift) caused by environmental artifacts.
 
 ##  System Architecture
 
@@ -57,5 +61,9 @@ ros2 topic echo /cmd_vel_nav
 ```
 
 [스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
-
+main1.node
 https://github.com/user-attachments/assets/1ae48b25-744f-43de-8b89-e6ec5a973423
+main2.node
+https://github.com/user-attachments/assets/d9cf8253-4c3e-4f82-bedf-540f6e9023d1
+
+
