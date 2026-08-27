@@ -6,6 +6,7 @@
 
 ### 1. Visual Perception (Blob-based Tracking)
 *   **Robust Contour Analysis**: Replaced traditional line-fitting with **Blob/Contour Tracking** (`cv::findContours`) to ensure navigation stability when track edges are partially buried or distorted by steep banking.
+*   By useing **HSV** color fiter, easy to masking Saturation and Hue
 *   **IPM (Inverse Perspective Mapping)**: Projects 3D road surfaces into a 2D Bird's Eye View (BEV) to calculate precise curvature and heading errors.
 *   **Dynamic Path Interpolation**: Real-time virtual path generation based on a fixed 914.4mm track width, allowing consistent centering even when only one boundary is visible.
 *   **High-Frequency Processing**: Optimized C++ backend achieves 30fps+ on embedded systems, reducing control loop latency.
@@ -69,11 +70,11 @@ ros2 topic echo /camrea/camera/imu
 
 [스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
 
-main1.node
+main1.node (without imu)
 
 https://github.com/user-attachments/assets/1ae48b25-744f-43de-8b89-e6ec5a973423
 
-main2.node
+main2.node (include imu)
 
 https://github.com/user-attachments/assets/d9cf8253-4c3e-4f82-bedf-540f6e9023d1
 
