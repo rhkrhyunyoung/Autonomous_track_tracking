@@ -65,7 +65,7 @@ ros2 launch linetracing_cpp track.launch.py
 ros2 topic echo /cmd_vel_nav
 ros2 topic echo /camrea/camera/imu
 ```
-+ when you use microstrain, you have ti change topic name to imu/data
++ when you use microstrain, you have to change topic name to imu/data
 
 [스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
 
