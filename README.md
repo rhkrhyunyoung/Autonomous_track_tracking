@@ -25,7 +25,7 @@
 
 Designed with a **modular Topic-Subscriber architecture** to enable multi-node concurrency without hardware conflict:
 
-1.  **Sense**: RealSense D455 streams aligned RGB-Depth and IMU data.
+1.  **Sense**: RealSense D455 streams aligned RGB-Depth and IMU data. (or gv7-microsrtain)
 2.  **Perceive**: `autonomous_track_tracking` (this node) identifies the track and calculates `cmd_vel_nav`.
 3.  **Recognize**: YOLOv8 handles mission-critical objects (Red flags, traffic signals).
 4.  **Act**: `Mission Manager` arbitrates all navigation and mission inputs for final vehicle control.commands (`cmd_vel`).
@@ -65,6 +65,7 @@ ros2 launch linetracing_cpp track.launch.py
 ros2 topic echo /cmd_vel_nav
 ros2 topic echo /camrea/camera/imu
 ```
++ when you use microstrain, you have ti change topic name to imu/data
 
 [스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
 
