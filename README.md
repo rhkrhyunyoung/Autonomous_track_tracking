@@ -71,15 +71,29 @@ run by launch
 ros2 launch linetracing_cpp track.launch.py
 ```
 ## Topic
+```mermaid
+graph LR
+    %% Nodes Definition
+    Camera["/camera/camera"]
+    LaneNode["/lane_follower_node"]
+    RobotActuator(["/cmd_vel_nav (Controller)"])
 
-<img width="1886" height="396" alt="rosgraph" src="https://github.com/user-attachments/assets/3b253956-f52b-419f-9670-cea4dd2a7511" />
+    %% Topic Flow
+    Camera -->|"/camera/camera/color/image_raw"| LaneNode
+    Camera -->|"/camera/camera/imu"| LaneNode
+    LaneNode -->|"/cmd_vel_nav"| RobotActuator
 
+    %% Styling
+    style LaneNode fill:#fff,stroke:#333,stroke-width:2px
+    style Camera fill:#eee,stroke:#333,stroke-dasharray: 5 5
+    style RobotActuator fill:#eee,stroke:#333,stroke-dasharray: 5 5
+```
 ```
 ros2 topic echo /cmd_vel_nav
 ros2 topic echo /camrea/camera/imu
 ```
 + when you use microstrain, you have to change topic name to imu/data
-
+## Driving in fact
 [스크린캐스트 07-23-2026 08:43:30 PM.webm](https://github.com/user-attachments/assets/b6f8ea2f-f1d2-4ed6-8c13-71e336da1edd)
 
 main1.node (without imu)
