@@ -31,7 +31,7 @@ The steering is governed by a **Proportional-Derivative (PD) Controller**:
 | `config.hpp` | **Central Configuration** | Defines PID constants, Camera resolution, ROI limits, and speed parameters. |
 | `VisionProcessor.hpp` | **The "Eyes"** | Handles HSV filtering, morphological noise reduction, and binary mask generation. |
 | `RobotController.hpp` | **The "Driver"** | Implements the PD control logic to convert pixel error into angular velocity. |
-| `main1.cpp` | **Node Integrator (v1)** | Main ROS 2 Node. Implements IMU threshold at $\pm 3.0$ for high sensitivity. |
+| `main1.cpp` | **Node Integrator (v1)** | Main ROS 2 Node. Without IMU threshold  |
 | `main2.cpp` | **Node Integrator (v2)** | Same as v1 but with a $\pm 5.0$ IMU threshold for more stable environments. |
 
 ##  System Architecture
