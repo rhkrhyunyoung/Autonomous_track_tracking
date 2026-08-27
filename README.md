@@ -5,22 +5,34 @@
 ##  Technical Features
 
 ### 1. Visual Perception (Blob-based Tracking)
-*   **Robust Contour Analysis**: Replaced traditional line-fitting with **Blob/Contour Tracking** (`cv::findContours`) to ensure navigation stability when track edges are partially buried or distorted by steep banking.
-*   By useing **HSV** color fiter, easy to masking Saturation and Hue
-*   **IPM (Inverse Perspective Mapping)**: Projects 3D road surfaces into a 2D Bird's Eye View (BEV) to calculate precise curvature and heading errors.
-*   **Dynamic Path Interpolation**: Real-time virtual path generation based on a fixed 914.4mm track width, allowing consistent centering even when only one boundary is visible.
-*   **High-Frequency Processing**: Optimized C++ backend achieves 30fps+ on embedded systems, reducing control loop latency.
+The robot identifies the driving track using color-based segmentation in the **HSV color space**. 
+- **Dynamic ROI (Region of Interest):** To reduce computational load and eliminate noise from the background, the system ignores the top 20% and bottom 10% of the camera frame.
+- **Color Segmentation:** Specifically tuned to detect mint/green tracks using `cv::inRange`.
+- **Morphological Operations:** Uses `Opening` and `Closing` filters to remove salt-and-pepper noise and bridge gaps in the detected lane.
+- **Centroid Calculation:** Computes the "Center of Mass" of the largest contour to determine the target steering point.
 
-### 2. Control & Motion Stability
-*   **PD Control Algorithm**: Fine-tuned Proportional-Derivative control for smooth heading adjustment and oscillation suppression.
-*   **Active Slip Compensation**: Integrates real-time IMU Z-axis angular velocity to compensate for track-type robot slippage during high-speed cornering.
-*   **Advanced Signal Filtering**: 
-    *   **Exponential Moving Average (EMA)**: Dampens sensor noise and prevents jitter.
-    *   **Jump Guard**: Reject outlier target coordinates (>150px shift) caused by environmental artifacts.
-*   **Gravity-Vector Banking Compensation**: Utilizes RealSense IMU X-axis linear acceleration to detect lateral tilt on banked turns. When the gravity vector exceeds a threshold ($\pm3.0 m/s^2$), the system injects a proactive steering offset (approx. 10°) to counteract gravitational pull, ensuring the robot maintains an "in-course" trajectory rather than sliding down the slope.
-*   *   **Advanced Signal Filtering**:
-    *   **Exponential Moving Average (EMA)**: Dampens sensor noise and prevents jitter.
-    *   **Jump Guard**: Reject outlier target coordinates (>150px shift) caused by environmental artifacts.
+### 2. IMU-Assisted Correction
+Unlike traditional line followers, this system uses the **Linear Acceleration (X-axis)** from an IMU (e.g., Intel RealSense) to compensate for physical tilts or sudden movements.
+- **Directional Bias:** If the robot detects a significant lateral force ($|a_x| > 3.0$ or $5.0$), it applies a 10-degree (in radians) steering offset to prevent drifting.
+- **Visual Feedback:** A yellow "IMU Target" dot is rendered on the debug screen to visualize the compensated trajectory.
+
+### 3. Control Strategy (PD Control)
+The steering is governed by a **Proportional-Derivative (PD) Controller**:
+- **P-Term:** Corrects the current error relative to the lane center.
+- **D-Term:** Dampens oscillations by reacting to the rate of change in error.
+- **Dynamic Speed:** The linear velocity automatically scales down during sharp turns to ensure traction and tracking accuracy.
+
+---
+
+## 📁 File Descriptions
+
+| File | Role | Key Functions |
+| :--- | :--- | :--- |
+| `config.hpp` | **Central Configuration** | Defines PID constants, Camera resolution, ROI limits, and speed parameters. |
+| `VisionProcessor.hpp` | **The "Eyes"** | Handles HSV filtering, morphological noise reduction, and binary mask generation. |
+| `RobotController.hpp` | **The "Driver"** | Implements the PD control logic to convert pixel error into angular velocity. |
+| `main1.cpp` | **Node Integrator (v1)** | Main ROS 2 Node. Implements IMU threshold at $\pm 3.0$ for high sensitivity. |
+| `main2.cpp` | **Node Integrator (v2)** | Same as v1 but with a $\pm 5.0$ IMU threshold for more stable environments. |
 
 ##  System Architecture
 
