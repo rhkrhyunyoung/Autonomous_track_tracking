@@ -55,10 +55,15 @@ private:
 
         int start_y = Config::ROI_START_Y;
         int end_y   = Config::ROI_END_Y;
+        int start_x = Config::ROI_START_X;
+        int end_x   = Config::ROI_END_X;
+        
         start_y = std::clamp(start_y, 0, img_h);
         end_y   = std::clamp(end_y, start_y, img_h);
+        start_x = std::clamp(start_x, 0, img_w); 
+        end_x   = std::clamp(end_x, start_x, img_w); 
 
-        cv::Rect roi_rect(0, start_y, img_w, end_y - start_y);
+        cv::Rect roi_rect(start_x, start_y, end_x - start_x, end_y - start_y);
         cv::Mat roi_mask = binary(roi_rect);
 
         std::vector<std::vector<cv::Point>> contours;
@@ -83,17 +88,17 @@ private:
                 if (m.m00 != 0.0) {
                     visual_cx = m.m10 / m.m00;
                     visual_cy = m.m01 / m.m00;
-                    if (area >= 50000.0) { target_x = visual_cx; is_tracking = true; }
+                    if (area >= 50000.0) { target_x = visual_cx + start_x; is_tracking = true; }
                     else { target_x = center_x; is_tracking = false; }
                     
                     std::vector<std::vector<cv::Point>> disp_cnts;
                     std::vector<cv::Point> offset_cnt;
-                    for (const auto& p : largest) offset_cnt.push_back(p + cv::Point(0, start_y));
+                    for (const auto& p : largest) offset_cnt.push_back(p + cv::Point(start_x, start_y));
                     disp_cnts.push_back(offset_cnt);
                     cv::drawContours(frame, disp_cnts, -1, cv::Scalar(255, 0, 0), 4);
                     
                     // 초록색 점: 원래 비전이 찾은 차선의 정중앙
-                    cv::circle(frame, cv::Point(static_cast<int>(visual_cx), start_y + static_cast<int>(visual_cy)), 15, cv::Scalar(0, 255, 0), -1);
+                    cv::circle(frame, cv::Point(static_cast<int>(visual_cx + start_x), start_y + static_cast<int>(visual_cy)), 15, cv::Scalar(0, 255, 0), -1);
                 }
             }
         }
@@ -105,11 +110,11 @@ private:
         double visual_offset = 0.0; 
         const double FIVE_DEG_RAD = 10.0 * (M_PI / 180.0); // 5도 라디안
 
-        if (current_imu_x_ < -3.0) {
+        if (current_imu_x_ < -5.0) {
             // IMU X < -3 : 오른쪽으로 틀어야 함 -> 음수(-) 보정
             imu_correction = -FIVE_DEG_RAD;
             visual_offset = 80.0; // 시각적으로 노란 점을 오른쪽(+)에 표시하여 우회전 유도
-        } else if (current_imu_x_ > 3.0) {
+        } else if (current_imu_x_ > 5.0) {
             // IMU X > 3 : 왼쪽으로 틀어야 함 -> 양수(+) 보정
             imu_correction = FIVE_DEG_RAD;
             visual_offset = -80.0; // 시각적으로 노란 점을 왼쪽(-)에 표시하여 좌회전 유도
@@ -127,7 +132,7 @@ private:
 
         // 노란색 점: IMU 보정이 반영된 실질적 목표 지점
         if (std::abs(visual_offset) > 0.1) {
-            cv::Point corrected_pt(static_cast<int>(visual_cx + visual_offset), start_y + static_cast<int>(visual_cy));
+            cv::Point corrected_pt(static_cast<int>(visual_cx + start_x + visual_offset), start_y + static_cast<int>(visual_cy));
             cv::circle(frame, corrected_pt, 12, cv::Scalar(0, 255, 255), -1); // Yellow Dot
             cv::putText(frame, "IMU TARGET", corrected_pt + cv::Point(15, -15), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
         }
